@@ -13,9 +13,10 @@
     transform-origin:center center;will-change:transform;transition:none}
   .touch-layer{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none}
   .top-bar{position:absolute;top:0;left:0;right:0;height:60px;display:flex;align-items:center;
-    justify-content:space-between;padding:0 12px;padding-top:env(safe-area-inset-top);z-index:10}
-  .icon-btn{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;
-    border:none;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer}
+    justify-content:space-between;padding:0 12px;padding-top:env(safe-area-inset-top);z-index:10;background:rgba(0,0,0,.3)}
+  .btn{background:#2b8cff;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:15px;cursor:pointer}
+  .btn:active{opacity:.8}
+  .btn-green{background:#19be6b;}
   .bottom-bar{position:absolute;left:0;right:0;bottom:0;padding:20px 24px 30px;padding-bottom:calc(30px + env(safe-area-inset-bottom));
     display:flex;flex-direction:column;align-items:center;gap:14px;z-index:10;
     background:linear-gradient(to top,rgba(0,0,0,.6),transparent)}
@@ -24,12 +25,6 @@
   .shutter{width:72px;height:72px;border-radius:50%;background:#fff;border:4px solid #ccc;
     cursor:pointer;display:flex;align-items:center;justify-content:center}
   .shutter:active{transform:scale(.95)}
-  .shutter.saving{background:#ddd}
-  #start-screen{position:absolute;inset:0;background:#111;color:#fff;z-index:100;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;text-align:center}
-  #start-screen button,.pick-btn{padding:14px 28px;border-radius:10px;border:none;background:#2b8cff;
-    color:#fff;font-size:17px;cursor:pointer;text-align:center;display:inline-block}
-  #start-screen button:active,.pick-btn:active{opacity:.8}
   .hint{font-size:13px;color:#888;line-height:1.6}
   #file-input{display:none}
   .toast{position:absolute;left:50%;bottom:160px;transform:translateX(-50%);
@@ -40,33 +35,35 @@
 </head>
 <body>
 
-<div id="start-screen">
+<!-- 初始界面：先开相机 -->
+<div id="start-screen" style="position:absolute;inset:0;background:#111;color:#fff;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;text-align:center">
   <h2>构图辅助拍照</h2>
-  <p class="hint">先选一张示例照片，<br>然后按它的构图去拍。</p >
-  <label for="file-input" class="pick-btn">1. 选择示例照片</label>
-  <button id="start-cam-btn" style="display:none; background:#19be6b;">2. 点击开启相机</button>
-  <p class="hint">需要允许相机权限<br>如果没弹窗，请刷新页面重试</p >
+  <p class="hint">1. 请先打开相机<br>2. 再从相册选择参考图</p >
+  <button class="btn" id="start-cam-btn" style="font-size:18px;padding:16px 36px;">开启相机</button>
+  <p class="hint">（必须允许相机权限）</p >
+</div>
+
+<!-- 主界面 -->
+<div id="main-ui" style="display:none;">
+  <video id="video" playsinline autoplay muted></video>
+  <div id="overlay">< img id="overlay-img" alt=""></div>
+  <div class="touch-layer" id="touch-layer"></div>
+  
+  <div class="top-bar">
+    <button class="btn" id="pick-btn">选择参考图</button>
+    <button class="btn" id="switch-btn">切换前/后</button>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="opacity-row">
+      <span>透明度</span>
+      <input type="range" id="opacity" min="5" max="100" value="50">
+    </div>
+    <div class="shutter" id="shutter"></div>
+  </div>
 </div>
 
 <input type="file" id="file-input" accept="image/*">
-
-<video id="video" playsinline autoplay muted></video>
-<div id="overlay">< img id="overlay-img" alt=""></div>
-<div class="touch-layer" id="touch-layer"></div>
-
-<div class="top-bar">
-  <button class="icon-btn" id="back-btn">←</button>
-  <button class="icon-btn" id="switch-btn">⟳</button>
-</div>
-
-<div class="bottom-bar">
-  <div class="opacity-row">
-    <span>透明度</span>
-    <input type="range" id="opacity" min="5" max="100" value="50">
-  </div>
-  <div class="shutter" id="shutter"></div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -76,8 +73,8 @@ const touchLayer = document.getElementById('touch-layer');
 const opacitySlider = document.getElementById('opacity');
 const shutter = document.getElementById('shutter');
 const startScreen = document.getElementById('start-screen');
+const mainUI = document.getElementById('main-ui');
 const fileInput = document.getElementById('file-input');
-const startCamBtn = document.getElementById('start-cam-btn');
 const toast = document.getElementById('toast');
 
 let stream = null;
@@ -91,6 +88,7 @@ function showToast(msg, ms=1800) {
   setTimeout(() => toast.classList.remove('show'), ms);
 }
 
+// 开启相机
 async function startCamera() {
   if (stream) {
     stream.getTracks().forEach(t => t.stop());
@@ -105,10 +103,21 @@ async function startCamera() {
     await video.play();
     video.style.transform = (facingMode === 'user') ? 'scaleX(-1)' : 'none';
   } catch (e) {
-    alert('相机启动失败: ' + e.message + '\n请确保已允许相机权限，或者换Chrome浏览器打开。');
+    alert('相机启动失败: ' + e.message + '\n请确保浏览器有相机权限，且网络正常。');
   }
 }
 
-function applyTransform() {
-  overlayImg.style.transform =
-    `translate(${transform.x}px,${transform.y}px) scale(${tran
+// 点击开启相机按钮
+document.getElementById('start-cam-btn').addEventListener('click', async () => {
+  await startCamera();
+  startScreen.style.display = 'none';
+  mainUI.style.display = 'block';
+});
+
+// 选择参考图
+document.getElementById('pick-btn').addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
