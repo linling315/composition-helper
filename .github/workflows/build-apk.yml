@@ -25,23 +25,43 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Create Flutter project structure
+      - name: Backup custom lib
         run: |
           mkdir -p /tmp/lib_backup
           cp -r lib/* /tmp/lib_backup/ 2>/dev/null || true
-          flutter create --org com.example --project-name composition_helper --platforms=android .
-          cp -r /tmp/lib_backup/* lib/
 
-      - name: Add dependencies
+      - name: Create Flutter project
         run: |
-          cat >> pubspec.yaml << 'EOF'
+          flutter create --org com.example --project-name composition_helper --platforms=android /tmp/proj
+
+      - name: Copy project files
+        run: |
+          cp -r /tmp/proj/android .
+          cp /tmp/proj/pubspec.lock . 2>/dev/null || true
+          cp /tmp/lib_backup/* lib/
+
+      - name: Write pubspec.yaml
+        run: |
+          cat > pubspec.yaml << 'EOF'
+          name: composition_helper
+          description: Composition helper camera
+          publish_to: 'none'
+          version: 1.0.0+1
+
+          environment:
+            sdk: '>=3.0.0 <4.0.0'
 
           dependencies:
+            flutter:
+              sdk: flutter
             camera: ^0.11.0
             image_picker: ^1.1.2
             image_gallery_saver: ^2.0.3
             path_provider: ^2.1.4
             permission_handler: ^11.3.0
+
+          flutter:
+            uses-material-design: true
           EOF
 
       - name: Install dependencies
@@ -50,7 +70,7 @@ jobs:
       - name: Add Android permissions
         run: |
           MANIFEST=android/app/src/main/AndroidManifest.xml
-          sed -i 's/<application/<uses-permission android:name="android.permission.CAMERA"\/>\n<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"\/>\n<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"\/>\n<uses-permission android:name="android.permission.READ_MEDIA_IMAGES"\/>\n<application/' $MANIFEST
+          sed -i 's|<application|<uses-permission android:name="android.permission.CAMERA"/>\n<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>\n<uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n<application|' $MANIFEST
 
       - name: Build APK
         run: flutter build apk --release
