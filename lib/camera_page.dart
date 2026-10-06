@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:gal/gal.dart';
 
 class CameraPage extends StatefulWidget {
   final File template;
@@ -95,7 +95,7 @@ class _CameraPageState extends State<CameraPage> {
     setState(() => _saving = true);
     try {
       final file = await _controller!.takePicture();
-      await ImageGallerySaver.saveFile(file.path);
+      await Gal.putImage(file.path);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已保存到相册')),
@@ -183,4 +183,5 @@ class _CameraPageState extends State<CameraPage> {
                   child: Slider(
                     value: _opacity,
                     min: 0.05,
-                    
+                    max: 1.0,
+                    onChanged: (v) =
