@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:gal/gal.dart';
+import 'package:path_provider/path_provider.dart';
 
 class CameraPage extends StatefulWidget {
   final File template;
@@ -95,10 +95,13 @@ class _CameraPageState extends State<CameraPage> {
     setState(() => _saving = true);
     try {
       final file = await _controller!.takePicture();
-      await Gal.putImage(file.path);
+      final dir = await getApplicationDocumentsDirectory();
+      final newPath =
+          '${dir.path}/photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(file.path).copy(newPath);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已保存到相册')),
+          SnackBar(content: Text('已保存: $newPath')),
         );
       }
     } catch (e) {
@@ -179,9 +182,4 @@ class _CameraPageState extends State<CameraPage> {
             child: Row(
               children: [
                 const Icon(Icons.opacity, color: Colors.white),
-                Expanded(
-                  child: Slider(
-                    value: _opacity,
-                    min: 0.05,
-                    max: 1.0,
-                    onChanged: (v) =
+        
