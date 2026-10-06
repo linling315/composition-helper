@@ -37,7 +37,6 @@ jobs:
       - name: Copy project files
         run: |
           cp -r /tmp/proj/android .
-          cp /tmp/proj/pubspec.lock . 2>/dev/null || true
           cp /tmp/lib_backup/* lib/
 
       - name: Write pubspec.yaml
@@ -56,7 +55,7 @@ jobs:
               sdk: flutter
             camera: ^0.11.0
             image_picker: ^1.1.2
-            image_gallery_saver: ^2.0.3
+            gal: ^2.3.0
             path_provider: ^2.1.4
             permission_handler: ^11.3.0
 
